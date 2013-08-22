@@ -1,5 +1,7 @@
 ## daq (dumb-ass-queue) ##
-Seriously, it has no features.
+Seriously, it has no features. But it passes the tests! 
+[![Build
+Status](https://travis-ci.org/danielbeardsley/daq.png?branch=master)](https://travis-ci.org/danielbeardsley/daq)
 
 ### Protocol ###
 * TCP

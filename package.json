@@ -6,7 +6,8 @@
     "directories" : {
     },
     "dependencies" : {
-        "q": "0.9.6"
+        "q": "0.9.6",
+        "notify-queue": "0.0.2"
     },
     "devDependencies" : {
         "mocha": "1.12.x"

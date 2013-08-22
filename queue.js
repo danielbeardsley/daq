@@ -3,48 +3,45 @@ var Q = require('q');
 var NotifyQueue = require('notify-queue');
 
 module.exports = function DumbAssQueue() {
-  var producerServer = net.createServer();
-  var consumerServer = net.createServer();
+  var server = net.createServer();
   var queue = new NotifyQueue();
+  var connections = [];
 
-  this.listen = function listen(portProducer, portConsumer) {
-    var promise = Q.all([
-      Q.ninvoke(producerServer, 'on', 'listening'),
-      Q.ninvoke(consumerServer, 'on', 'listening'),
-    ]);
-    producerServer.listen(portProducer);
-    consumerServer.listen(portConsumer);
+  this.listen = function listen(port) {
+    var promise = Q.ninvoke(server, 'on', 'listening');
 
-    setupConnectionHandlers();
+    server.on('connection', function(socket) {
+      connections.push(new Connection(socket));
+    });
+    server.listen(port);
 
     return promise;
   }
 
   this.close = function close() {
-    producerServer.close();
-    consumerServer.close();
+    server.close();
   }
 
-  function setupConnectionHandlers () {
-    producerServer.on('connection', function(socket) {
-      log("producer connected");
-      forEachJsonObject(socket, function(object) {
-        log("job received from producer: " + JSON.stringify(object));
-        queue.push(object);
-      });
+  function Connection(socket) {
+    var cancelListener;
+
+    log("client connected");
+    forEachJsonObject(socket, function(object) {
+      log("data received from client: " + JSON.stringify(object));
+      switch (object.action) {
+        case 'add':
+          queue.push(object);
+          break;
+
+        case 'receive':
+          cancelListener = queue.pop(function(object) {
+            log("sending job to consumer");
+            socket.write(JSON.stringify(object) + "\n");
+          });
+          socket.on('close', cancelListener);
+          break;
+      }
     });
-
-    consumerServer.on('connection', function(socket) {
-      log("consumer connected");
-      var cancel = queue.pop(function(object, done) {
-        log("sending job to consumer");
-        socket.write(JSON.stringify(object) + "\n");
-        done();
-      });
-
-      socket.on('close', cancel);
-    });
-
   }
 }
   

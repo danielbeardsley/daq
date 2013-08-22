@@ -3,18 +3,14 @@ var assert  = require('assert');
 var Q       = require('q');
 var Queue   = require('./queue.js');
 
-var portP   = 34595;
-var portC   = 34596;
+var port   = 34595;
 
 describe('Queue', function(){
   describe("network interface", function() {
     it('should allow connections', function(done) {
       var q = new Queue();
-      q.listen(portP, portC).then(function() {
-        return Q.all([
-          testConnectionToPort(portP),
-          testConnectionToPort(portC)
-        ]);
+      q.listen(port).then(function() {
+        return testConnectionToPort(port);
       }).then(function teardown() {
         q.close();
         done();
@@ -23,8 +19,8 @@ describe('Queue', function(){
 
     it('should pass jobs', function(done) {
       var q = new Queue();
-      q.listen(portP, portC).then(function() {
-        log("Listening on both ports");
+      q.listen(port).then(function() {
+        log("Listening on port: " + port);
         return sendAJob({type:"blah"});
       }).
       then(receiveAJob).
@@ -48,9 +44,13 @@ function testConnectionToPort(port) {
 function sendAJob(job) {
   var deferred = Q.defer();
   log("connecting producer");
-  var connection = net.connect(portP, null, function() {
+  var connection = net.connect(port, null, function() {
     log('sending as producer');
-    connection.end(JSON.stringify(job) + "\n");
+    var msg = {
+      action: 'add',
+      data: job
+    };
+    connection.end(JSON.stringify(msg) + "\n");
     log('resolving');
     deferred.resolve();
   });
@@ -60,9 +60,13 @@ function sendAJob(job) {
 function receiveAJob(job) {
   var deferred = Q.defer();
   var result = '';
-  var connection = net.connect(portC);
+  var connection = net.connect(port);
 
   log("connecting consumer");
+  var msg = {
+    action: 'receive'
+  };
+  connection.write(JSON.stringify(msg) + "\n");
   connection.on('data', function(data) {
     log('received on consumer');
     result += data.toString();

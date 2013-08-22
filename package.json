@@ -1,0 +1,22 @@
+{
+    "name" : "dumb-ass-queue",
+    "version" : "0.0.1",
+    "description" : "A dumb job-queue, drop-dead simple and lacking any fancy features",
+    "main" : "./index.js",
+    "directories" : {
+    },
+    "dependencies" : {
+    },
+    "devDependencies" : {
+        "mocha": "*"
+    },
+    "author" : {
+        "name" : "Daniel Beardsley",
+        "email" : "daniel.beardsley@gmail.com",
+        "url" : "https://github.com/danielbeardsley"
+    },
+    "license" : "MIT",
+    "engine" : {
+        "node" : ">=0.8"
+    }
+}

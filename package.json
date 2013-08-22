@@ -17,6 +17,9 @@
         "email" : "daniel.beardsley@gmail.com",
         "url" : "https://github.com/danielbeardsley"
     },
+    "scripts": {
+        "test": "mocha test.js"
+    },
     "license" : "MIT",
     "engine" : {
         "node" : ">=0.8"

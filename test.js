@@ -41,9 +41,7 @@ describe('daq', function(){
         {type:"B"}
       ]);
     }).
-    then(function() {
-      return receiveAJob(['A']);
-    }).
+    then(jobReceiverForTypes(['A'])).
     then(function (job) {
       assert.strictEqual(job.type, 'A');
       q.close();
@@ -51,18 +49,35 @@ describe('daq', function(){
     }).done();
   });
 
-  it('should have a default type whos queue is unaffected', function(done) {
+  it('should have a default type whos queue is unaffected by typed jobs', function(done) {
     var q = new Queue();
     q.listen(port).then(function() {
       log("Listening on port: " + port);
       return sendJobs([
         {type: "A"},
-        "B",
+        "B"
       ]);
     }).
     then(receiveAJob).
     then(function (job) {
       assert.strictEqual(job.data, "B");
+      q.close();
+      done();
+    }).done();
+  });
+
+  it('should have a queue for each that is separate from the deafult queue', function(done) {
+    var q = new Queue();
+    q.listen(port).then(function() {
+      log("Listening on port: " + port);
+      return sendJobs([
+        "B",
+        {type:"A"},
+      ]);
+    }).
+    then(jobReceiverForTypes(['A'])).
+    then(function (job) {
+      assert.strictEqual(job.data.type, "A");
       q.close();
       done();
     }).done();
@@ -100,6 +115,12 @@ function sendJobs(jobs) {
     deferred.resolve();
   });
   return deferred.promise;
+}
+
+function jobReceiverForTypes(types) {
+  return function() {
+    return receiveAJob(types);
+  };
 }
 
 function receiveAJob(types) {

@@ -1,6 +1,8 @@
 var net = require('net');
+var log = require('./log.js');
 var Q = require('q');
 var NotifyQueue = require('notify-queue');
+var forEach = require('./for_each.js');
 
 module.exports = function DumbAssQueue() {
   var server = net.createServer();
@@ -9,12 +11,10 @@ module.exports = function DumbAssQueue() {
 
   this.listen = function listen(port) {
     var promise = Q.ninvoke(server, 'on', 'listening');
-
     server.on('connection', function(socket) {
       connections.push(new Connection(socket));
     });
     server.listen(port);
-
     return promise;
   }
 
@@ -26,7 +26,7 @@ module.exports = function DumbAssQueue() {
     var cancelListener;
 
     log("client connected");
-    forEachJsonObject(socket, function(object) {
+    forEach.jsonObject(socket, function(object) {
       log("data received from client: " + JSON.stringify(object));
       switch (object.action) {
         case 'add':
@@ -44,19 +44,4 @@ module.exports = function DumbAssQueue() {
     });
   }
 }
-  
-function forEachJsonObject(socket, callback) {
-  var data = '';
-  socket.on('data', function(chunk) {
-    log("chunk:" + chunk + " data:" + data);
-    data += chunk.toString();
-    if (data[data.length-1] == "\n") {
-      callback(JSON.parse(data.toString()));
-      data = '';
-    }
-  });
-}
 
-function log(msg) {
-  // console.log(msg);
-}

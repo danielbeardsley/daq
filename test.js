@@ -5,7 +5,7 @@ var Queue   = require('./queue.js');
 
 var port   = 34595;
 
-describe('Queue', function(){
+describe('daq', function(){
   describe("network interface", function() {
     it('should allow connections', function(done) {
       var q = new Queue();
@@ -17,7 +17,7 @@ describe('Queue', function(){
       }).done();
     });
 
-    it('should pass jobs', function(done) {
+    it('should allow jobs to be added and consumed', function(done) {
       var q = new Queue();
       q.listen(port).then(function() {
         log("Listening on port: " + port);
@@ -29,43 +29,43 @@ describe('Queue', function(){
         done();
       }).done();
     });
+  });
 
-    it('should have separate queues for each job type', function(done) {
-      var q = new Queue();
-      q.listen(port).then(function() {
-        log("Listening on port: " + port);
-        return sendJobs([
-          {type:"B"},
-          {type:"A"},
-          {type:"B"}
-        ]);
-      }).
-      then(function() {
-        return receiveAJob(['A']);
-      }).
-      then(function (job) {
-        assert.strictEqual(job.type, 'A');
-        q.close();
-        done();
-      }).done();
-    });
+  it('should have separate queues for each job type', function(done) {
+    var q = new Queue();
+    q.listen(port).then(function() {
+      log("Listening on port: " + port);
+      return sendJobs([
+        {type:"B"},
+        {type:"A"},
+        {type:"B"}
+      ]);
+    }).
+    then(function() {
+      return receiveAJob(['A']);
+    }).
+    then(function (job) {
+      assert.strictEqual(job.type, 'A');
+      q.close();
+      done();
+    }).done();
+  });
 
-    it('should have a default type whos queue is unaffected', function(done) {
-      var q = new Queue();
-      q.listen(port).then(function() {
-        log("Listening on port: " + port);
-        return sendJobs([
-          {type: "A"},
-          "B",
-        ]);
-      }).
-      then(receiveAJob).
-      then(function (job) {
-        assert.strictEqual(job.data, "B");
-        q.close();
-        done();
-      }).done();
-    });
+  it('should have a default type whos queue is unaffected', function(done) {
+    var q = new Queue();
+    q.listen(port).then(function() {
+      log("Listening on port: " + port);
+      return sendJobs([
+        {type: "A"},
+        "B",
+      ]);
+    }).
+    then(receiveAJob).
+    then(function (job) {
+      assert.strictEqual(job.data, "B");
+      q.close();
+      done();
+    }).done();
   });
 })
 

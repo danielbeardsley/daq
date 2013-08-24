@@ -52,12 +52,10 @@ module.exports = function DumbAssQueue() {
  * item.type is in the provided types array
  */
 function matcherForTypes(types) {
-  log('got types' + JSON.stringify(types));
   if (!types) {
     types = [DEFAULT_TYPE];
   }
 
-  log('got types' + JSON.stringify(types));
   var typesMap = {};
   types.forEach(function(type) {
     typesMap[type] = true;

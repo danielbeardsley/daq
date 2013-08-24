@@ -59,9 +59,7 @@ describe('Queue', function(){
           "B",
         ]);
       }).
-      then(function() {
-        return receiveAJob();
-      }).
+      then(receiveAJob).
       then(function (job) {
         assert.strictEqual(job.data, "B");
         q.close();

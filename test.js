@@ -21,10 +21,30 @@ describe('Queue', function(){
       var q = new Queue();
       q.listen(port).then(function() {
         log("Listening on port: " + port);
-        return sendAJob({type:"blah"});
+        return sendAJob({X:"blah"});
       }).
       then(receiveAJob).
       then(function () {
+        q.close();
+        done();
+      }).done();
+    });
+
+    it('should have separate queues for each job type', function(done) {
+      var q = new Queue();
+      q.listen(port).then(function() {
+        log("Listening on port: " + port);
+        return sendJobs([
+          {type:"B"},
+          {type:"A"},
+          {type:"B"}
+        ]);
+      }).
+      then(function() {
+        return receiveAJob(['A']);
+      }).
+      then(function (job) {
+        assert.strictEqual(job.type, 'A');
         q.close();
         done();
       }).done();
@@ -42,29 +62,38 @@ function testConnectionToPort(port) {
 }
 
 function sendAJob(job) {
+  return sendJobs([job]);
+}
+
+function sendJobs(jobs) {
   var deferred = Q.defer();
   log("connecting producer");
   var connection = net.connect(port, null, function() {
     log('sending as producer');
     var msg = {
-      action: 'add',
-      data: job
+      action: 'add'
     };
-    connection.end(JSON.stringify(msg) + "\n");
+    jobs.forEach(function(job) {
+      msg.data = job;
+      msg.type = job.type;
+      connection.write(JSON.stringify(msg) + "\n");
+    });
+    connection.end();
     log('resolving');
     deferred.resolve();
   });
   return deferred.promise;
 }
 
-function receiveAJob(job) {
+function receiveAJob(types) {
   var deferred = Q.defer();
   var result = '';
   var connection = net.connect(port);
 
   log("connecting consumer");
   var msg = {
-    action: 'receive'
+    action: 'receive',
+    types: types || null
   };
   connection.write(JSON.stringify(msg) + "\n");
   connection.on('data', function(data) {

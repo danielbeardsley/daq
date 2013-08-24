@@ -3,6 +3,7 @@ var log = require('./log.js');
 var Q = require('q');
 var NotifyQueue = require('notify-queue');
 var forEach = require('./for_each.js');
+var DEFAULT_TYPE = 'default';
 
 module.exports = function DumbAssQueue() {
   var server = net.createServer();
@@ -30,18 +31,40 @@ module.exports = function DumbAssQueue() {
       log("data received from client: " + JSON.stringify(object));
       switch (object.action) {
         case 'add':
+          object.type = object.type || DEFAULT_TYPE;
           queue.push(object);
           break;
 
         case 'receive':
-          cancelListener = queue.pop(function(object) {
+          cancelListener = queue.pop(function(item) {
             log("sending job to consumer");
-            socket.write(JSON.stringify(object) + "\n");
-          });
+            socket.write(JSON.stringify(item) + "\n");
+          }, matcherForTypes(object.types));
           socket.on('close', cancelListener);
           break;
       }
     });
+  }
+}
+
+/**
+ * Returns a function(item){} then returns true if
+ * item.type is in the provided types array
+ */
+function matcherForTypes(types) {
+  log('got types' + JSON.stringify(types));
+  if (!types) {
+    types = [DEFAULT_TYPE];
+  }
+
+  log('got types' + JSON.stringify(types));
+  var typesMap = {};
+  types.forEach(function(type) {
+    typesMap[type] = true;
+  });
+
+  return function(item) {
+    return typesMap[item.type];
   }
 }
 

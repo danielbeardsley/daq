@@ -2,8 +2,8 @@ var readline   = require('readline');
 var stream     = require('stream');
 var log        = require('./log.js');
 
-function forEachJsonObject(socket, callback) {
-  forEachLine(socket, function(line) {
+function forEachJsonObject(stream, callback) {
+  forEachLine(stream, function(line) {
     log("line:" + line);
     callback(JSON.parse(line.toString()));
   });

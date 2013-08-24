@@ -32,6 +32,21 @@ describe('Queue', function(){
   });
 })
 
+var PriorityQueue = require('./priority_queue.js');
+describe('PriorityQueue', function(){
+  describe('with unprioritized things', function(){
+    it('should work normally', function() {
+      var p = new PriorityQueue();
+      p.enq('a');
+      p.enq('b');
+      assert.strictEqual(p.deq(), 'a');
+      p.enq('c');
+      assert.strictEqual(p.deq(), 'b');
+      assert.strictEqual(p.deq(), 'c');
+    });
+  });
+});
+
 function testConnectionToPort(port) {
   var deferred = Q.defer();
   var connection = net.connect(port, null, function() {

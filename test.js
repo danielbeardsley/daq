@@ -87,6 +87,19 @@ describe('daq', function(){
         log("all jobs finished");
       }).done();
     });
+
+    it('should not kill the server on bad JSON', function(done) {
+      var q = new Queue();
+      q.listen(port).then(function() {
+        log("Listening on port: " + port);
+        var connection = net.connect(port);
+        connection.end("This aint right\n");
+        setTimeout(function() {
+          done();
+          q.close();
+        }, 100);
+      }).done();
+    });
   });
 
   it('should have separate queues for each job type', function(done) {

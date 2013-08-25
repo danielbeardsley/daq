@@ -3,6 +3,10 @@ var assert  = require('assert');
 var Q       = require('q');
 var Queue   = require('./queue.js');
 
+// Faux paux : using part of the program under testing in the tests
+// It's just so darn useful.
+var forEach = require('./for_each.js');
+
 var port   = 34595;
 
 describe('daq', function(){
@@ -101,7 +105,7 @@ function sendJobs(jobs) {
   var deferred = Q.defer();
   log("connecting producer");
   var connection = net.connect(port, null, function() {
-    log('sending as producer');
+    log('sending '+jobs.length+' job(s) as producer');
     var msg = {
       action: 'add'
     };
@@ -123,24 +127,52 @@ function jobReceiverForTypes(types) {
   };
 }
 
+function receiveNJobs(count, types) {
+  var connection = net.connect(port);
+  var jobs = [];
+
+  return function() {
+    var promise = receiveAndStoreAJob();
+    while (--count) {
+      promise = promise.then(receiveAndStoreAJob);
+    }
+    return promise.then(function() {
+      return jobs;
+    });
+  }
+
+  function receiveAndStoreAJob() {
+    return receiveAJobOnConnection(types, connection).
+    then(function(job) {
+      jobs.push(job);
+      return job;
+    });
+  }
+}
+
 function receiveAJob(types) {
-  var deferred = Q.defer();
-  var result = '';
+  log("Trying to receive a job of types: " + (types || []).join(','));
   var connection = net.connect(port);
 
-  log("connecting consumer");
+  return receiveAJobOnConnection(types, connection).
+  then(function(job) {
+    connection.end();
+    return job;
+  });
+}
+
+function receiveAJobOnConnection(types, connection) {
+  var deferred = Q.defer();
+  var result = '';
   var msg = {
     action: 'receive',
     types: types || null
   };
   connection.write(JSON.stringify(msg) + "\n");
-  connection.on('data', function(data) {
-    log('received on consumer');
-    result += data.toString();
-    if (result[result.length-1] == "\n") {
-      deferred.resolve(JSON.parse(result.toString()));
-      connection.end();
-    }
+  var reader = forEach.jsonObject(connection, function(object) {
+    log("received job: " + result.toString());
+    deferred.resolve(object);
+    reader.close();
   });
   return deferred.promise;
 }

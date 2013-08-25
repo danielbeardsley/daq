@@ -3,7 +3,7 @@ var stream     = require('stream');
 var log        = require('./log.js');
 
 function forEachJsonObject(stream, callback) {
-  forEachLine(stream, function(line) {
+  return forEachLine(stream, function(line) {
     log("line:" + line);
     callback(JSON.parse(line.toString()));
   });
@@ -20,6 +20,8 @@ function forEachLine(inStream, callback) {
   lineReader.on('line', function(line) {
     callback(line);
   });
+
+  return lineReader;
 }
 
 module.exports = {

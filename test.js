@@ -33,6 +33,28 @@ describe('daq', function(){
         done();
       }).done();
     });
+
+    it('should give every job a unique job id', function(done) {
+      var q = new Queue();
+      q.listen(port).then(function() {
+        log("Listening on port: " + port);
+        return sendJobs(
+          ["a", "b", "c", "d", "e"]
+        );
+      }).
+      then(receiveNJobs(5)).
+      then(function (jobs) {
+        var ids = jobs.map(function(job) { return job.id; });
+        var allUnique =
+        ids.every(function (value, index, self) { 
+          return self.indexOf(value) === index;
+        });
+
+        assert.ok(allUnique);
+        q.close();
+        done();
+      }).done();
+    });
   });
 
   it('should have separate queues for each job type', function(done) {

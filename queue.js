@@ -9,6 +9,7 @@ module.exports = function DumbAssQueue() {
   var server = net.createServer();
   var queue = new NotifyQueue();
   var connections = [];
+  var nextJobId = 1;
 
   this.listen = function listen(port) {
     var promise = Q.ninvoke(server, 'on', 'listening');
@@ -31,8 +32,7 @@ module.exports = function DumbAssQueue() {
       log("data received from client: " + JSON.stringify(object));
       switch (object.action) {
         case 'add':
-          object.type = object.type || DEFAULT_TYPE;
-          queue.push(object);
+          addJob(object);
           break;
 
         case 'receive':
@@ -45,7 +45,14 @@ module.exports = function DumbAssQueue() {
       }
     });
   }
+
+  function addJob(object) {
+    object.type = object.type || DEFAULT_TYPE;
+    object.id = nextJobId++;
+    queue.push(object);
+  }
 }
+
 
 /**
  * Returns a function(item){} then returns true if

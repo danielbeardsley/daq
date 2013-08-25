@@ -39,10 +39,10 @@ describe('daq', function(){
       q.listen(port).then(function() {
         log("Listening on port: " + port);
         return sendJobs(
-          ["a", "b", "c", "d", "e"]
+          ["a", "b", "c", "d", "e"],
+          true
         );
       }).
-      then(receiveNJobs(5)).
       then(function (jobs) {
         var ids = jobs.map(function(job) { return job.id; });
         var allUnique =
@@ -51,6 +51,35 @@ describe('daq', function(){
         });
 
         assert.ok(allUnique);
+        q.close();
+        done();
+      }).done();
+    });
+
+    it('should allow blocking on a particular job', function(done) {
+      var q = new Queue();
+      var jobComplete = false;
+      q.listen(port).then(function() {
+        log("Listening on port: " + port);
+        return sendAJob("YY", true);
+      }).
+      then(function (job) {
+        var deferred = Q.defer();
+        // This blocks until a job is complete
+        afterJobCompletion(job.id, function() {
+          // Make sure we marked the job as complete before we got here.
+          assert.ok(jobCompleted);
+          q.close();
+          done();
+        });
+        setTimeout(function() {
+          deferred.resolve(receiveAJob());
+        },100);
+        return deferred.promise;
+      }).
+      then(finishAJob).
+      then(function () {
+        jobComplete = true;
         q.close();
         done();
       }).done();
@@ -119,11 +148,22 @@ function testConnectionToPort(port) {
   return deferred.promise;
 }
 
-function sendAJob(job) {
-  return sendJobs([job]);
+/**
+ * Sends a single job returning a promise that either resolves to the job
+ * info object received from daq, or null
+ */
+function sendAJob(job, resolveToJob) {
+  return sendJobs([job], resolveToJob).
+  then(function(jobs) {
+    return resolveToJob && jobs[0];
+  });
 }
 
-function sendJobs(jobs) {
+/**
+ * Sends multiple jobs returning a promise that either resolves to an array of
+ * job info objects received from daq, or null
+ */
+function sendJobs(jobs, resolveToJobs) {
   var deferred = Q.defer();
   log("connecting producer");
   var connection = net.connect(port, null, function() {
@@ -136,9 +176,18 @@ function sendJobs(jobs) {
       msg.type = job.type;
       connection.write(JSON.stringify(msg) + "\n");
     });
-    connection.end();
-    log('resolving');
-    deferred.resolve();
+    var jobInfo = [];
+    var count = jobs.length;
+    var reader = forEach.jsonObject(connection, function(object) {
+      log('received ack for job: '+object.id);
+      jobInfo.push(object);
+      if (--count == 0) {
+        reader.close();
+        connection.end();
+        deferred.resolve(resolveToJobs && jobInfo);
+        log('resolving');
+      }
+    });
   });
   return deferred.promise;
 }
@@ -172,6 +221,16 @@ function receiveNJobs(count, types) {
   }
 }
 
+function finishAJob(job) {
+  var connection = net.connect(port);
+  var msg = {
+    action: 'finish',
+    id: job.id
+  };
+  connection.end(JSON.stringify(msg) + "\n");
+  return job;
+}
+
 function receiveAJob(types) {
   log("Trying to receive a job of types: " + (types || []).join(','));
   var connection = net.connect(port);
@@ -185,14 +244,29 @@ function receiveAJob(types) {
 
 function receiveAJobOnConnection(types, connection) {
   var deferred = Q.defer();
-  var result = '';
   var msg = {
     action: 'receive',
     types: types || null
   };
   connection.write(JSON.stringify(msg) + "\n");
   var reader = forEach.jsonObject(connection, function(object) {
-    log("received job: " + result.toString());
+    log("received job: " + JSON.stringify(object));
+    deferred.resolve(object);
+    reader.close();
+  });
+  return deferred.promise;
+}
+
+function afterJobCompletion(jobid) {
+  var deferred = Q.defer();
+  var connection = net.connect(port);
+  var msg = {
+    action: 'wait',
+    id: jobid
+  };
+  connection.end(JSON.stringify(msg) + "\n");
+  var reader = forEach.jsonObject(connection, function(object) {
+    log("job marked as finished: " + JSON.stringify(object));
     deferred.resolve(object);
     reader.close();
   });

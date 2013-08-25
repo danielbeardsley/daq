@@ -58,30 +58,33 @@ describe('daq', function(){
 
     it('should allow blocking on a particular job', function(done) {
       var q = new Queue();
-      var jobComplete = false;
+      var jobsComplete = 0;
       q.listen(port).then(function() {
         log("Listening on port: " + port);
-        return sendAJob("YY", true);
+        return sendJobs(["X", "Y", "Z"], null, true);
       }).
-      then(function (job) {
+      then(function (connection) {
         var deferred = Q.defer();
         // This blocks until a job is complete
-        afterJobCompletion(job.id, function() {
+        afterJobCompletions(connection, 3).then(function(jobs) {
+          log("All clients notified about completed jobs");
           // Make sure we marked the job as complete before we got here.
-          assert.ok(jobCompleted);
+          assert.equal(3, jobsComplete);
+          connection.end();
           q.close();
           done();
-        });
+        }).done();
         setTimeout(function() {
-          deferred.resolve(receiveAJob());
+          deferred.resolve();
+          log("resolving after timeout");
         },100);
         return deferred.promise;
       }).
-      then(finishAJob).
-      then(function () {
-        jobComplete = true;
-        q.close();
-        done();
+      then(receiveNJobs(3)).
+      then(function (jobs) {
+        finishJobs(jobs);
+        jobsComplete = jobs.length;
+        log("all jobs finished");
       }).done();
     });
   });
@@ -163,19 +166,24 @@ function sendAJob(job, resolveToJob) {
  * Sends multiple jobs returning a promise that either resolves to an array of
  * job info objects received from daq, or null
  */
-function sendJobs(jobs, resolveToJobs) {
+function sendJobs(jobs, resolveToJobs, notify) {
   var deferred = Q.defer();
   log("connecting producer");
   var connection = net.connect(port, null, function() {
     log('sending '+jobs.length+' job(s) as producer');
     var msg = {
-      action: 'add'
+      action: 'add',
+      notify: notify 
     };
     jobs.forEach(function(job) {
       msg.data = job;
       msg.type = job.type;
       connection.write(JSON.stringify(msg) + "\n");
     });
+    if (notify) {
+      deferred.resolve(connection);
+      return deferred.promise;
+    }
     var jobInfo = [];
     var count = jobs.length;
     var reader = forEach.jsonObject(connection, function(object) {
@@ -203,6 +211,7 @@ function receiveNJobs(count, types) {
   var jobs = [];
 
   return function() {
+    log("Trying to receive " + count + " jobs");
     var promise = receiveAndStoreAJob();
     while (--count) {
       promise = promise.then(receiveAndStoreAJob);
@@ -222,13 +231,23 @@ function receiveNJobs(count, types) {
 }
 
 function finishAJob(job) {
-  var connection = net.connect(port);
-  var msg = {
-    action: 'finish',
-    id: job.id
-  };
-  connection.end(JSON.stringify(msg) + "\n");
+  finishJobs([job]);
   return job;
+}
+
+function finishJobs(jobs) {
+  log("marking " + jobs.length + " jobs as finished");
+  var connection = net.connect(port);
+  jobs.forEach(function(job) {
+    var msg = {
+      action: 'finish',
+      id: job.id
+    };
+    connection.write(JSON.stringify(msg) + "\n");
+    log("marking job: " + job.id + " as finished");
+  });
+  connection.end();
+  return jobs;
 }
 
 function receiveAJob(types) {
@@ -249,10 +268,27 @@ function receiveAJobOnConnection(types, connection) {
     types: types || null
   };
   connection.write(JSON.stringify(msg) + "\n");
+  log("waiting to receive a job");
   var reader = forEach.jsonObject(connection, function(object) {
     log("received job: " + JSON.stringify(object));
     deferred.resolve(object);
     reader.close();
+  });
+  return deferred.promise;
+}
+
+function afterJobCompletions(connection, count) {
+  var deferred = Q.defer();
+  var jobs = [];
+  log("Listening for job "+count+" completions");
+  var reader = forEach.jsonObject(connection, function(object) {
+    log("job marked as finished: " + JSON.stringify(object));
+    jobs.push(object);
+    if (jobs.length == count) {
+      log("All jobs marked as complete");
+      deferred.resolve(jobs);
+      reader.close();
+    }
   });
   return deferred.promise;
 }

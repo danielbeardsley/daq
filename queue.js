@@ -34,7 +34,11 @@ module.exports = function DumbAssQueue() {
           var msg = {
             id: object.id
           };
-          socket.write(JSON.stringify(msg) + "\n");
+          if (object.notify) {
+            addToWaitingList(object.id, socket);
+          } else {
+            socket.write(JSON.stringify(msg) + "\n");
+          }
           break;
 
         case 'receive':

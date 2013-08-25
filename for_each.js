@@ -4,7 +4,7 @@ var log        = require('./log.js');
 
 function forEachJsonObject(stream, callback) {
   return forEachLine(stream, function(line) {
-    log("line:" + line);
+    log("line:" + line.trim());
     callback(JSON.parse(line.toString()));
   });
 }

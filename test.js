@@ -310,5 +310,5 @@ function afterJobCompletion(jobid) {
 }
 
 function log(msg) {
-  // console.log(msg);
+  console.log("test: " + msg);
 }

@@ -8,6 +8,7 @@ var DEFAULT_TYPE = 'default';
 module.exports = function DumbAssQueue() {
   var server = net.createServer();
   var queue = new NotifyQueue();
+  var totalItems = 0;
   var nextJobId = 1;
   var waiting = {};
 
@@ -68,14 +69,32 @@ module.exports = function DumbAssQueue() {
         case 'wait':
           addToWaitingList(object.id, socket);
           break;
+
+        case 'stats':
+          socket.write(JSON.stringify(getStats()) + "\n");
+        break;
       }
     });
+  }
+
+  function getStats() {
+    var stats = {
+      queue_length: queue.items().length,
+      total_items: totalItems
+    }
+    stats.types = queue.items().reduceRight(function(types, item) {
+      var typeInfo = types[item.type] || (types[item.type] = {queue_length: 0}); 
+      typeInfo.queue_length++;
+      return types;
+    }, {});
+    return stats;
   }
 
   /**
    * Adds the provided job to the queue
    */
   function addJob(object) {
+    totalItems++;
     object.type = object.type || DEFAULT_TYPE;
     object.id = nextJobId++;
     log("Job: " + object.id + " added to queue");

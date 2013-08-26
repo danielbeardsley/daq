@@ -100,6 +100,35 @@ describe('daq', function(){
         }, 100);
       }).done();
     });
+
+    describe("stats command", function() {
+      it('should return the connected clients who are blocked on jobs', function(done) {
+        var q = new Queue();
+        q.listen(port).then(function() {
+          log("Listening on port: " + port);
+          return sendJobs([1,2,{type:'X'},4,5,6]);
+        }).
+        then(receiveStats).
+        then(function(stats) {
+          assert.deepEqual({
+            queue_length: 6,
+            total_items: 6,
+            types: {
+              default: {
+                queue_length: 5
+              },
+              X: {
+                queue_length: 1
+              }
+            }
+          }, stats);
+        }).
+        then(function () {
+          q.close();
+          done();
+        }).done();
+      });
+    });
   });
 
   it('should have separate queues for each job type', function(done) {
@@ -314,6 +343,22 @@ function afterJobCompletion(jobid) {
   forEach.jsonObject(connection, function(object) {
     log("job marked as finished: " + JSON.stringify(object));
     deferred.resolve(object);
+  });
+  return deferred.promise;
+}
+
+function receiveStats() {
+  log("Trying to receive stats");
+  var connection = net.connect(port);
+  var deferred = Q.defer();
+  var msg = {
+    action: 'stats'
+  };
+  connection.write(JSON.stringify(msg) + "\n");
+  forEach.jsonObject(connection, function(stats) {
+    log("received stats: " + JSON.stringify(stats));
+    connection.end();
+    deferred.resolve(stats);
   });
   return deferred.promise;
 }

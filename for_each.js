@@ -18,9 +18,7 @@ function forEachJsonObject(stream, callback) {
 function forEachLine(inStream, callback) {
   emitLines(inStream);
 
-  inStream.on('line', function(line) {
-    callback(line);
-  });
+  inStream.on('line', callback);
 }
 
 /**

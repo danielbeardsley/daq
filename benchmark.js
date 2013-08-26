@@ -16,24 +16,24 @@ queue.listen(port).then(function() {
       }, 0);
       log("One-at-a-time item processing (add -> receive -> finish -> repeat)");
       log("items: " + diffs.length + " Avg latency: " + (sum / diffs.length) + 'ms');
+      queue.close();
       producer.end();
       consumer.end();
-      queue.close();
    }).done();
-});
+}).done();
 
 function jobProducer(socket, count) {
    return function sendNextJob() {
+      if (count <= 0) {
+        return false;
+      }
+
       var msg = {
          action: 'add',
          data: {time: Date.now()}
       };
       socket.write(str(msg));
-      if (count--) {
-         return true;
-      } else {
-         return false;
-      };
+      return count--;
    }
 }
 
@@ -43,13 +43,12 @@ function consumeJobs(socket, produceJob) {
    var diffs = [];
    receiveNext(socket);
    produceJob();
-   var lineReader = forEach.jsonObject(socket, function(object) {
+   forEach.jsonObject(socket, function(object) {
       socket.write(str({action:"finish",id:object.id}));
       var diff = Date.now() - object.data.time;
       diffs.push(diff);
       receiveNext(socket);
       if (!produceJob()) {
-         lineReader.close();
          deferred.resolve(diffs);
       }
    });

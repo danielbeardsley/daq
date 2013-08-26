@@ -199,11 +199,10 @@ function sendJobs(jobs, resolveToJobs, notify) {
     }
     var jobInfo = [];
     var count = jobs.length;
-    var reader = forEach.jsonObject(connection, function(object) {
+    forEach.jsonObject(connection, function(object) {
       log('received ack for job: '+object.id);
       jobInfo.push(object);
       if (--count == 0) {
-        reader.close();
         connection.end();
         deferred.resolve(resolveToJobs && jobInfo);
         log('resolving');
@@ -282,10 +281,9 @@ function receiveAJobOnConnection(types, connection) {
   };
   connection.write(JSON.stringify(msg) + "\n");
   log("waiting to receive a job");
-  var reader = forEach.jsonObject(connection, function(object) {
+  forEach.jsonObject(connection, function(object) {
     log("received job: " + JSON.stringify(object));
     deferred.resolve(object);
-    reader.close();
   });
   return deferred.promise;
 }
@@ -294,13 +292,12 @@ function afterJobCompletions(connection, count) {
   var deferred = Q.defer();
   var jobs = [];
   log("Listening for job "+count+" completions");
-  var reader = forEach.jsonObject(connection, function(object) {
+  forEach.jsonObject(connection, function(object) {
     log("job marked as finished: " + JSON.stringify(object));
     jobs.push(object);
     if (jobs.length == count) {
       log("All jobs marked as complete");
       deferred.resolve(jobs);
-      reader.close();
     }
   });
   return deferred.promise;
@@ -314,10 +311,9 @@ function afterJobCompletion(jobid) {
     id: jobid
   };
   connection.end(JSON.stringify(msg) + "\n");
-  var reader = forEach.jsonObject(connection, function(object) {
+  forEach.jsonObject(connection, function(object) {
     log("job marked as finished: " + JSON.stringify(object));
     deferred.resolve(object);
-    reader.close();
   });
   return deferred.promise;
 }

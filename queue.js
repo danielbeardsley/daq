@@ -45,6 +45,7 @@ module.exports = function DumbAssQueue() {
           var cancelListener = queue.pop(function(item) {
             log("sending job to consumer");
             socket.write(JSON.stringify(item) + "\n");
+            socket.removeListener('close', cancelListener);
           }, matcherForTypes(object.types));
           socket.on('close', cancelListener);
           break;

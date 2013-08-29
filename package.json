@@ -7,7 +7,8 @@
     },
     "dependencies" : {
         "q": "0.9.6",
-        "notify-queue": "0.0.3"
+        "notify-queue": "0.0.3",
+        "split": "0.2.10"
     },
     "devDependencies" : {
         "mocha": "1.12.x"

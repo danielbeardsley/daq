@@ -37,7 +37,7 @@ The command is a single object with these properties:
 * `types`: `['string1', 'string2']` (optional, defaults to `['default']`)
    Only items that are one of these types will be received.
 
-#### finish ####
+#### finish (optional) ####
 Mark an item as finished. After receiving and processing an item, consumers
 should send this command. A single object: `{id: "itemid"}`. Sending `finish`
 is only necessecary if you use the `notify` option from the `add` command.
